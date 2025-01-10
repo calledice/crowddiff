@@ -14,25 +14,35 @@ from einops import rearrange
 
 import cv2
 
+def standardize_locations(locations):
+    """Ensure locations is a 2D array of shape (N, 2)."""
+    if isinstance(locations, (list, tuple)):
+        locations = np.array(locations)
+    
+    # 如果是单一坐标，转换为包含一个元素的列表
+    if len(locations.shape) == 1 and locations.shape[0] == 2:
+        locations = locations.reshape(1, -1)
+
+    return locations
 
 def get_arg_parser():
     parser = argparse.ArgumentParser('Prepare image and density datasets', add_help=False)
 
     # Datasets path
-    parser.add_argument('--dataset', default='shtech_A')
-    parser.add_argument('--data_dir', default='primary_datasets/', type=str,
+    parser.add_argument('--dataset', default='UCF-QNRF')
+    parser.add_argument('--data_dir', default='E:/data/', type=str,
                         help='Path to the original dataset')
     parser.add_argument('--mode', default='train', type=str,
                         help='Indicate train or test folders')
     
     # Output path
-    parser.add_argument('--output_dir', default='datasets/intermediate', type=str,
+    parser.add_argument('--output_dir', default='E:/data/intermediate', type=str,
                         help='Path to save the results')
     
     # Gaussian kernel size and kernel variance
-    parser.add_argument('--kernel_size', default='', type=str,
+    parser.add_argument('--kernel_size', default='3', type=str,
                         help='Size of the Gaussian kernel')
-    parser.add_argument('--sigma', default='', type=str,
+    parser.add_argument('--sigma', default='0.5', type=str,
                         help='Variance of the Gaussian kernel')
     
     # Crop image parameters
@@ -40,7 +50,7 @@ def get_arg_parser():
                         help='Size of the crop images')
     
     # Device parameter
-    parser.add_argument('--ndevices', default=4, type=int)
+    parser.add_argument('--ndevices', default=1, type=int)
 
     # Image output
     parser.add_argument('--with_density', action='store_true')
@@ -57,14 +67,12 @@ def main(args):
     # dataset directiors
     data_dir = os.path.join(args.data_dir, args.dataset)
     mode = args.mode
+    print(data_dir)
 
     # output directory
     output_dir = os.path.join(args.output_dir, args.dataset)
 
-    try:
-        os.mkdir(output_dir)
-    except FileExistsError:
-        pass
+    os.makedirs(output_dir, exist_ok=True)
 
     # density kernel parameters
     kernel_size_list, sigma_list = get_kernel_and_sigma_list(args)
@@ -102,9 +110,21 @@ def main(args):
             # load the images and locations
             image = Image.open(file).convert('RGB')
             # image = np.asarray(image).astype(np.uint8)
-
-            file = file.replace('images','ground-truth').replace('IMG','GT_IMG').replace('jpg','mat')
-            locations = loadmat(file)['image_info'][0][0]['location'][0][0]
+            ##对于jhu_crowd_v2.0是txt，需要修改
+            if  args.dataset == "jhu_crowd_v2.0":
+                file = file.replace('images','ground_truth').replace('jpg','txt')
+                locations = np.loadtxt(file,usecols=(0, 1))
+            elif args.dataset == "NWPU_crowd":
+                file = file.replace('images','ground_truth').replace('jpg','mat')
+                locations = loadmat(file)['annPoints']
+            elif args.dataset == "UCF_CC_50" or args.dataset == "UCF-QNRF":
+                file = file.replace('images','ground_truth').replace('.jpg','_ann.mat')
+                locations = loadmat(file)['annPoints']
+            else:
+                file = file.replace('images','ground_truth').replace('IMG','GT_IMG').replace('jpg','mat')
+                locations = loadmat(file)['image_info'][0][0]['location'][0][0]
+            
+            
 
             # if not (args.lower_bound <= len(locations) and len(locations) < args.upper_bound):
             #     continue
@@ -126,9 +146,11 @@ def main(args):
                     image = np.asarray(image)
             
             # create dot map
-            density = create_dot_map(locations, image.shape)        
+            print(file)
+            # 标准化 locations 格式
+            locations = standardize_locations(locations)
+            density = create_dot_map(locations, image.shape)
             density = torch.tensor(density)
-
             density = density.unsqueeze(0).unsqueeze(0)
             density_maps = [kernel(density) for kernel in kernel_list]
             density = torch.stack(density_maps).detach().numpy()
@@ -219,9 +241,22 @@ def get_circle_count(image, normalizer=1, threshold=0, draw=False):
 def create_dot_map(locations, image_size):
 
     density = np.zeros(image_size[:-1])
+    print(image_size[:-1])
+    height, width = image_size[:-1]  # 获取图像的高度和宽度
+    # 对于ShanghaiTech_Crowd_Counting_Dataset，locations中的x,y与image_size位置是反的,并且数据有些有问题，点的位置超出图片范围
     for x,y in locations:
-        x, y = int(x), int(y)
-        density[y,x] = 1.
+        x,y = int(x), int(y)
+        # 检查坐标是否在合法范围内,把边缘的纳入
+        if x == width:
+            x = x-1
+        if y == height:
+            y = y-1
+        if 0 <= y < height and 0 <= x < width:
+            density[y, x] = 1.
+        else:
+            # 可选：记录或打印超出边界的点（根据需要）
+            print(f"Point ({x}, {y}) is out of bounds.")
+            pass
     
     return density
 
@@ -399,3 +434,5 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser('Prepare image and density dataset', parents=[get_arg_parser()])
     args = parser.parse_args()
     main(args)
+
+    # python cc_utils/preprocess_shtech.py --data_dir E:/data/ --output_dir E:/data/intermediate --dataset ShanghaiTech_Crowd_Counting_Dataset/part_A_final --mode train --image_size 256 --ndevices 1 --sigma '0.5' --kernel_size '3' 
