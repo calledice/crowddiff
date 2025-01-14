@@ -1,10 +1,10 @@
 DATA_DIR='../data/primary_datasets/'
-OUTPUT_DIR='../data/datasets/ucf_cc/'
+OUTPUT_DIR='../data/datasets/shtech_A/'
 
 python cc_utils/preprocess_shtech.py \
     --data_dir $DATA_DIR \
     --output_dir $OUTPUT_DIR \
-    --dataset ucf_cc \
+    --dataset shtech_A \
     --mode train \
     --image_size 256 \
     --ndevices 1 \

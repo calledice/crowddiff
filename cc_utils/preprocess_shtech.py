@@ -29,14 +29,15 @@ def get_arg_parser():
     parser = argparse.ArgumentParser('Prepare image and density datasets', add_help=False)
 
     # Datasets path
-    parser.add_argument('--dataset', default='ucf_cc')
+    parser.add_argument('--dataset', default='jhu_plus')
     parser.add_argument('--data_dir', default='/mnt/data1/cc/data/primary_datasets/', type=str,
                         help='Path to the original dataset')
-    parser.add_argument('--mode', default='train', type=str,
+    
+    parser.add_argument('--mode', default='val', type=str,
                         help='Indicate train or test folders')
     
     # Output path
-    parser.add_argument('--output_dir', default='/mnt/data1/cc/data/datasets/ucf_cc/', type=str,
+    parser.add_argument('--output_dir', default='/mnt/data1/cc/data/datasets/jhu_plus/', type=str,
                         help='Path to save the results')
     
     # Gaussian kernel size and kernel variance
@@ -130,7 +131,7 @@ def main(args):
             else:
                 file = file.replace('images','ground_truth').replace('IMG','GT_IMG').replace('jpg','mat')
                 locations = loadmat(file)['image_info'][0][0]['location'][0][0]
-            
+            print(file)
             
 
             # if not (args.lower_bound <= len(locations) and len(locations) < args.upper_bound):
@@ -153,7 +154,7 @@ def main(args):
                     image = np.asarray(image)
             
             # create dot map
-            print(file)
+            # print(file)
             # 标准化 locations 格式
             locations = standardize_locations(locations)
             density = create_dot_map(locations, image.shape)
@@ -173,7 +174,10 @@ def main(args):
                 else:
                     images, densities = create_non_overlapping_crops(image, density, image_size)
 
-            index = os.path.basename(file).split('.')[0].split('_')[-1]
+            if args.dataset == "ucf_qnrf" or args.dataset == "ucf_cc":
+                index = os.path.basename(file).split('.')[0].split('_')[-2]
+            else:
+                index = os.path.basename(file).split('.')[0].split('_')[-1]
 
             path = os.path.join(output_dir,f'part_{device+1}',mode)
             den_path = path.replace(os.path.basename(path), os.path.basename(path)+'_den')
@@ -185,7 +189,9 @@ def main(args):
                 pass
             
             for sub_index, (image, density) in enumerate(zip(images, densities)):
+                # print(sub_index)
                 file = os.path.join(path,str(index)+'-'+str(sub_index+1)+'.jpg')
+                # print(file)
                 
                 if args.with_density:
                     req_image = [(density[:,:,index]/normalizer[index]*255.).clip(0,255).astype(np.uint8) for index in range(len(normalizer))]
@@ -324,7 +330,7 @@ def resize_rescale_info(image, locations, image_size):
 
 
 def create_non_overlapping_crops(image, density, image_size):
-    
+    density = density.squeeze() #维数先减小最后return的时候再增加才不会报错
     h, w = density.shape
     h, w = (h-1+image_size)//image_size, (w-1+image_size)//image_size
     h, w = h*image_size, w*image_size
@@ -345,7 +351,7 @@ def create_non_overlapping_crops(image, density, image_size):
     pad_density = rearrange(pad_density, '(p1 h) (p2 w) -> (p1 p2) h w', h=image_size, w=image_size).numpy()
     pad_image = rearrange(pad_image, '(p1 h) (p2 w) c -> (p1 p2) h w c', h=image_size, w=image_size).numpy()   
 
-    return pad_image, pad_density
+    return pad_image, np.expand_dims(pad_density, axis=-1)
 
 
 def create_overlapping_crops(image, crop_size, overlap):

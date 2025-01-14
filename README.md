@@ -34,6 +34,10 @@ pip install -r requirements.txt
 
 ## Dataset preparation
 - Run the preprocessing script.<br />
+- 代码处理的正则化写的很垃圾，直接用preprocess_shtech.py来处理5个数据集.<br />
+- 训练集和验证集图像256*256,验证集的图像没有重叠裁剪，测试集则为原来大小.<br />
+- 对于有些数据集包含天气等因素，这类数据集的预处理暂不考虑这么细，直接按照数据集自己的划分先把训练集拿来处理，后面测试的时候可以分类别.<br />
+- nwpu的test要在官网上提交结果.<br />
 ```
 python cc_utils/preprocess_shtech.py \
     --data_dir path/to/data \
