@@ -29,14 +29,14 @@ def get_arg_parser():
     parser = argparse.ArgumentParser('Prepare image and density datasets', add_help=False)
 
     # Datasets path
-    parser.add_argument('--dataset', default='UCF-QNRF')
-    parser.add_argument('--data_dir', default='E:/data/', type=str,
+    parser.add_argument('--dataset', default='ucf_cc')
+    parser.add_argument('--data_dir', default='/mnt/data1/cc/data/primary_datasets/', type=str,
                         help='Path to the original dataset')
     parser.add_argument('--mode', default='train', type=str,
                         help='Indicate train or test folders')
     
     # Output path
-    parser.add_argument('--output_dir', default='E:/data/intermediate', type=str,
+    parser.add_argument('--output_dir', default='/mnt/data1/cc/data/datasets/ucf_cc/', type=str,
                         help='Path to save the results')
     
     # Gaussian kernel size and kernel variance
@@ -57,7 +57,7 @@ def get_arg_parser():
 
     # count bound
     parser.add_argument('--lower_bound', default=0, type=int)
-    parser.add_argument('--upper_bound', default=np.Inf, type=int)
+    parser.add_argument('--upper_bound', default=300, type=int) # np.Inf
 
     return parser
 
@@ -89,8 +89,12 @@ def main(args):
     # distribution of crowd count
     crowd_bin = [0,0,0,0]
 
-
-    img_list = sorted(glob.glob(os.path.join(data_dir,mode+'_data','images','*.jpg')))
+    if args.dataset == "ucf_qnrf":
+        img_list = sorted(glob.glob(os.path.join(data_dir,mode+'_data','*.jpg')))
+    elif args.dataset == "ucf_cc":
+        img_list = sorted(glob.glob(os.path.join(data_dir,mode+'_data','*.jpg')))
+    else:
+        img_list = sorted(glob.glob(os.path.join(data_dir,mode+'_data','images','*.jpg')))
 
     sub_list = setup_sub_folders(img_list, output_dir, ndevices=args.ndevices)
 
@@ -111,14 +115,17 @@ def main(args):
             image = Image.open(file).convert('RGB')
             # image = np.asarray(image).astype(np.uint8)
             ##对于jhu_crowd_v2.0是txt，需要修改
-            if  args.dataset == "jhu_crowd_v2.0":
-                file = file.replace('images','ground_truth').replace('jpg','txt')
+            if  args.dataset == "jhu_plus":
+                file = file.replace('images','gt').replace('jpg','txt')
                 locations = np.loadtxt(file,usecols=(0, 1))
-            elif args.dataset == "NWPU_crowd":
-                file = file.replace('images','ground_truth').replace('jpg','mat')
+            elif args.dataset == "nwpu":
+                file = file.replace('images','gt').replace('jpg','mat')
                 locations = loadmat(file)['annPoints']
-            elif args.dataset == "UCF_CC_50" or args.dataset == "UCF-QNRF":
-                file = file.replace('images','ground_truth').replace('.jpg','_ann.mat')
+            elif args.dataset == "ucf_cc":
+                file = file.replace('.jpg','_ann.mat')
+                locations = loadmat(file)['annPoints']
+            elif args.dataset == "ucf_qnrf":
+                file = file.replace('.jpg','_ann.mat')
                 locations = loadmat(file)['annPoints']
             else:
                 file = file.replace('images','ground_truth').replace('IMG','GT_IMG').replace('jpg','mat')

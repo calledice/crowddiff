@@ -116,7 +116,7 @@ def main(args):
     output_dir = os.path.join(args.output_dir)
 
     try:
-        os.mkdir(output_dir)
+        os.makedirs(output_dir, exist_ok=True)
     except FileExistsError:
         pass
 
@@ -213,71 +213,71 @@ def main(args):
             # create dot map
             density = create_dot_map(locations, image.shape)
             
-            for _ in range(5):
-                random_loc = locations + np.random.randn(locations.shape[0], locations.shape[1])*2
-                dot_map = (np.zeros_like(image)*255).astype(np.uint8)
-                circle_map = (np.ones_like(image)*255).astype(np.uint8)
-                color = (255,0,0)
-                if _ == 4:
-                    random_loc = locations
-                    color = (0,0,255)
-                for point in random_loc:
-                    print(point)
-                    point = (int(point[0]), int(point[1]))
-                    print(point)
-                    cv2.circle(circle_map, point, radius=3, color=color, thickness=-1)
-                    # cv2.circle(dot_map, point, radius=1, color=color, thickness=-1)
-                    dot_map[point[1],point[0],0] = 1
-                mask = 255 - np.prod(circle_map, axis=-1, keepdims=True)**(1/3)
-                dot_map = np.sum(dot_map, axis=-1, keepdims=False).astype(np.float64)
-                density = torch.tensor(dot_map)
+            # for _ in range(5):
+            #     random_loc = locations + np.random.randn(locations.shape[0], locations.shape[1])*2
+            #     dot_map = (np.zeros_like(image)*255).astype(np.uint8)
+            #     circle_map = (np.ones_like(image)*255).astype(np.uint8)
+            #     color = (255,0,0)
+            #     if _ == 4:
+            #         random_loc = locations
+            #         color = (0,0,255)
+            #     for point in random_loc:
+            #         print(point)
+            #         point = (int(point[0]), int(point[1]))
+            #         print(point)
+            #         cv2.circle(circle_map, point, radius=3, color=color, thickness=-1)
+            #         # cv2.circle(dot_map, point, radius=1, color=color, thickness=-1)
+            #         dot_map[point[1],point[0],0] = 1
+            #     mask = 255 - np.prod(circle_map, axis=-1, keepdims=True)**(1/3)
+            #     dot_map = np.sum(dot_map, axis=-1, keepdims=False).astype(np.float64)
+            #     density = torch.tensor(dot_map)
 
-                density = density.unsqueeze(0).unsqueeze(0)
-                density_maps = [kernel(density) for kernel in kernel_list]
-                density = torch.stack(density_maps).detach().numpy()
-                dot_map = density.transpose(1,2,0)
-                plt.imshow(dot_map)
+            #     density = density.unsqueeze(0).unsqueeze(0)
+            #     density_maps = [kernel(density) for kernel in kernel_list]
+            #     density = torch.stack(density_maps).detach().numpy()
+            #     dot_map = density.transpose(1,2,0)
+            #     plt.imshow(dot_map)
 
 
-                plt.axis('off')
-                plt.savefig(f'experiments/final/q sample transparent/density{_}.jpg',dpi=1200,format='jpg',
-                            bbox_inches='tight',pad_inches=0.0)
-                img = Image.open(f'experiments/final/q sample transparent/density{_}.jpg')
-                img = img.convert('RGBA')
-                datas = img.getdata()
-                newData = []
+            #     plt.axis('off')
+            #     plt.savefig(f'../experiments/final/q sample transparent/density{_}.jpg',dpi=1200,format='jpg',
+            #                 bbox_inches='tight',pad_inches=0.0)
+            #     img = Image.open(f'experiments/final/q sample transparent/density{_}.jpg')
+            #     img = img.convert('RGBA')
+            #     datas = img.getdata()
+            #     newData = []
 
-                for item in datas:
-                    newData.append((item[0],item[1],item[2],200))
+            #     for item in datas:
+            #         newData.append((item[0],item[1],item[2],200))
 
-                img.putdata(newData)
-                img.save(f'experiments/final/q sample transparent/density{_}.png')
+            #     img.putdata(newData)
+            #     img.save(f'experiments/final/q sample transparent/density{_}.png')
 
 
                 
-                circle_map = circle_map[:,:,::-1]
-                circle_map = np.concatenate([circle_map,mask], axis=-1)
+            #     circle_map = circle_map[:,:,::-1]
+            #     circle_map = np.concatenate([circle_map,mask], axis=-1)
                 
-                img = Image.fromarray(circle_map[:,:,:-1].astype(np.uint8)).convert('RGBA')
-                datas = img.getdata()
+            #     img = Image.fromarray(circle_map[:,:,:-1].astype(np.uint8)).convert('RGBA')
+            #     datas = img.getdata()
  
-                newData = []
+            #     newData = []
             
-                for item in datas:
-                    if item[0] == 255 and item[1] == 255 and item[2] == 255:
-                        newData.append((127, 127, 127, 100))
-                    else:
-                        newData.append(item)
+            #     for item in datas:
+            #         if item[0] == 255 and item[1] == 255 and item[2] == 255:
+            #             newData.append((127, 127, 127, 100))
+            #         else:
+            #             newData.append(item)
             
-                img.putdata(newData)
-                img.save(f'experiments/final/q sample transparent/realize{_}.png', "PNG")
-                # cv2.imwrite(f'experiments/final/q sample transparent/realize{_}.jpg',dot_map)
-                # plt.imshow(dot_map)
-                # plt.axis('off')
-                # plt.savefig(f'experiments/final/q sample transparent/realize{_}.png',dpi=1200,
-                            # bbox_inches='tight',pad_inches=0.0, transparent=True)
-                    # print(dot_map.dtype, dot_map.shape)
-            assert False
+            #     img.putdata(newData)
+            #     img.save(f'experiments/final/q sample transparent/realize{_}.png', "PNG")
+            #     # cv2.imwrite(f'experiments/final/q sample transparent/realize{_}.jpg',dot_map)
+            #     # plt.imshow(dot_map)
+            #     # plt.axis('off')
+            #     # plt.savefig(f'experiments/final/q sample transparent/realize{_}.png',dpi=1200,
+            #                 # bbox_inches='tight',pad_inches=0.0, transparent=True)
+            #         # print(dot_map.dtype, dot_map.shape)
+            # assert False
 
             density = torch.tensor(density)
 
@@ -309,11 +309,11 @@ def main(args):
             except FileExistsError:
                 pass
             
-            q_samples = create_q_samples(density, num_steps=10, maxvar=0.01, minvar=0.0002)
+            # q_samples = create_q_samples(density, num_steps=10, maxvar=0.01, minvar=0.0002)
 
             for sub_index, (image, density) in enumerate(zip(images, densities)):
-                if density.sum() < 5:
-                    continue
+                # if density.sum() < 5:
+                #     continue
                 file = os.path.join(path,str(index)+'-'+str(sub_index+1)+'.jpg')
                 if args.with_density:
                     req_image = [(255-(density[:,:,index]/normalizer[index]*255.)).clip(0,255).astype(np.uint8) for index in range(len(normalizer))]
